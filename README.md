@@ -1,2 +1,2 @@
-# Cloud_IPVS_LB
+# cloud_ipvs_lb
 Automated IPVS Load Balancer for cloud
