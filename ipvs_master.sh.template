@@ -1,0 +1,77 @@
+#!/bin/bash
+
+set -x
+
+sysctl -w net.ipv4.ip_forward=1
+iptables -I INPUT -p tcp --dport 80 -j ACCEPT
+iptables -I INPUT -p vrrp -i eth0 -j ACCEPT
+service iptables save
+ip link set eth0 up promisc on
+
+# Install the IPVS load balancer administration tools
+yum install ipvsadm keepalived -y
+
+cat > /etc/keepalived/keepalived.conf <<EOF
+! Configuration File for keepalived
+global_defs {
+    router_id LVS_PRIMARY
+}
+vrrp_instance VI_1 {
+    state MASTER
+    interface eth0
+    virtual_router_id 51
+    priority 100
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass 1111
+    }
+    virtual_ipaddress {
+        VIP_IP/VIP_SUBNET_MASK
+    }
+}
+virtual_server VIP_IP 80 {
+    delay_loop 6
+    lb_algo rr
+    lb_kind DR
+    protocol TCP
+    real_server REAL_SERVER1_IP 80 {
+        weight 1
+        HTTP_GET {
+            url {
+                path /index.html
+            }
+            connect_timeout 3
+            nb_get_retry 3
+            delay_before_retry 3
+        }
+    }
+    real_server REAL_SERVER2_IP 80 {
+        weight 1
+        HTTP_GET {
+            url {
+                path /index.html
+            }
+            connect_timeout 3
+            nb_get_retry 3
+            delay_before_retry 3
+        }
+    }
+    real_server REAL_SERVER3_IP 80 {
+        weight 1
+        HTTP_GET {
+            url {
+                path /index.html
+            }
+            connect_timeout 3
+            nb_get_retry 3
+            delay_before_retry 3
+        }
+    }
+}
+EOF
+
+# Start keepalived
+service keepalived restart
+
+set +x

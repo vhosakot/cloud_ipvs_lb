@@ -1,0 +1,28 @@
+#!/bin/bash
+
+set -x
+
+yum install -y httpd
+chkconfig httpd on
+service httpd start
+iptables -I INPUT -p tcp --dport 80 -j ACCEPT
+service iptables save
+echo `hostname` >> /var/www/html/index.html
+
+sysctl -w net.ipv4.conf.lo.arp_ignore=1
+sysctl -w net.ipv4.conf.lo.arp_announce=2
+sysctl -w net.ipv4.conf.eth0.arp_ignore=1
+sysctl -w net.ipv4.conf.eth0.arp_announce=2
+sysctl -w net.ipv4.conf.all.arp_ignore=1
+sysctl -w net.ipv4.conf.all.arp_announce=2
+
+# Enable a local loopback "secondary" address so that the
+# server will not reject the request for the VIP address
+ip addr add VIP_IP/32 dev lo
+
+# Create a large file with checksum for testing
+cd /var/www/html
+dd if=/dev/urandom of=large_file.txt bs=102400 count=100
+md5sum large_file.txt > large_file.md5
+
+set +x
